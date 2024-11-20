@@ -1,4 +1,5 @@
 import sys
+import msvcrt
 import os
 from colorama import init, Fore, Style
 import logging
@@ -12,10 +13,9 @@ from strategic_analysis_parser import StrategicAnalysisParser
 from research_manager import ResearchManager
 
 # Initialize colorama
-if os.name == 'nt':  # Windows-specific initialization
-    init(convert=True, strip=False, wrap=True)
-else:
-    init()
+if os.name != 'nt':
+  print("This version is Windows-specific. Please use the Unix version for other operating systems.")
+  sys.exit(1)
 
 # Set up logging
 log_directory = 'logs'
@@ -53,80 +53,67 @@ class OutputRedirector:
         sys.stderr = self.original_stderr
 
 def print_header():
-    print(Fore.CYAN + Style.BRIGHT + """
-    ╔══════════════════════════════════════════════════════════╗
-    ║             🌐 Advanced Research Assistant 🤖             ║
-    ╚══════════════════════════════════════════════════════════╝
-    """ + Style.RESET_ALL)
-    print(Fore.YELLOW + """
-    Welcome to the Advanced Research Assistant!
+  print(Fore.CYAN + Style.BRIGHT + """
+  ╔══════════════════════════════════════════════════════════╗
+  ║             🌐 Advanced Research Assistant 🤖             ║
+  ╚══════════════════════════════════════════════════════════╝
+  """ + Style.RESET_ALL)
+  print(Fore.YELLOW + """
+  Welcome to the Advanced Research Assistant!
 
-    Commands:
-    - For web search: start message with '/'
-      Example: "/latest news on AI advancements"
+  Commands:
+  - For web search: start message with '/'
+    Example: "/latest news on AI advancements"
 
-    - For research mode: start message with '@'
-      Example: "@analyze the impact of AI on healthcare"
+  - For research mode: start message with '@'
+    Example: "@analyze the impact of AI on healthcare"
 
-    Press CTRL+D (Linux/Mac) or CTRL+Z (Windows) to submit input.
-    """ + Style.RESET_ALL)
+  Press CTRL+Z to submit input.
+  """ + Style.RESET_ALL)
 
 def get_multiline_input() -> str:
-    """Get multiline input using raw terminal mode for reliable CTRL+D handling"""
-    print(f"{Fore.GREEN}📝 Enter your message (Press CTRL+D to submit):{Style.RESET_ALL}")
-    lines = []
+  """Windows-compatible multiline input handler"""
+  print(f"{Fore.GREEN}📝 Enter your message (Press CTRL+Z to submit):{Style.RESET_ALL}")
+  lines = []
+  current_line = []
 
-    import termios
-    import tty
-    import sys
+  try:
+      while True:
+          if msvcrt.kbhit():
+              char = msvcrt.getch()
 
-    # Save original terminal settings
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
+              # CTRL+Z detection (Windows equivalent of CTRL+D)
+              if char in [b'\x1a', b'\x04']:  # CTRL+Z or CTRL+D
+                  sys.stdout.write('\n')
+                  if current_line:
+                      lines.append(''.join(current_line))
+                  return ' '.join(lines).strip()
 
-    try:
-        # Set terminal to raw mode
-        tty.setraw(fd)
+              # Handle special characters
+              elif char == b'\r':  # Enter
+                  sys.stdout.write('\n')
+                  lines.append(''.join(current_line))
+                  current_line = []
 
-        current_line = []
-        while True:
-            # Read one character at a time
-            char = sys.stdin.read(1)
+              elif char == b'\x08':  # Backspace
+                  if current_line:
+                      current_line.pop()
+                      sys.stdout.write('\b \b')
 
-            # CTRL+D detection
-            if not char or ord(char) == 4:  # EOF or CTRL+D
-                sys.stdout.write('\n')  # New line for clean display
-                if current_line:
-                    lines.append(''.join(current_line))
-                return ' '.join(lines).strip()
+              elif char == b'\x03':  # CTRL+C
+                  sys.stdout.write('\n')
+                  return 'q'
 
-            # Handle special characters
-            elif ord(char) == 13:  # Enter
-                sys.stdout.write('\n')
-                lines.append(''.join(current_line))
-                current_line = []
+              # Normal character
+              elif 32 <= ord(char[0]) <= 126:
+                  current_line.append(char.decode('utf-8'))
+                  sys.stdout.write(char.decode('utf-8'))
 
-            elif ord(char) == 127:  # Backspace
-                if current_line:
-                    current_line.pop()
-                    sys.stdout.write('\b \b')  # Erase character
+              sys.stdout.flush()
 
-            elif ord(char) == 3:  # CTRL+C
-                sys.stdout.write('\n')
-                return 'q'
-
-            # Normal character
-            elif 32 <= ord(char) <= 126:  # Printable characters
-                current_line.append(char)
-                sys.stdout.write(char)
-
-            # Flush output
-            sys.stdout.flush()
-
-    finally:
-        # Restore terminal settings
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        print()  # New line for clean display
+  except Exception as e:
+      logger.error(f"Error in multiline input: {str(e)}")
+      return 'q'
 
 def initialize_system():
     """Initialize system with proper error checking"""
@@ -296,7 +283,6 @@ def main():
             if 'research_manager' in locals() and research_manager:
                 if hasattr(research_manager, 'ui'):
                     research_manager.ui.cleanup()
-            curses.endwin()
         except:
             pass
         os._exit(0)
