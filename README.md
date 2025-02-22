@@ -101,10 +101,10 @@ python Web-LLM.py
 
 3. Start a research session:
 - Type `@` followed by your research query
-- Press CTRL+D to submit
+- Press CTRL+Z to submit
 - Example: `@What year is global population projected to start declining?`
 
-4. During research you can use the following commands by typing the letter associated with each and submitting with CTRL+D:
+4. During research you can use the following commands by typing the letter associated with each and submitting with CTRL+Z:
 - Use `s` to show status.
 - Use `f` to show current focus.
 - Use `p` to pause and assess research progress, which will give you an assessment from the LLM after reviewing the entire research content whether it can answer your query or not with the content it has so far collected, then it waits for you to input one of two commands, `c` to continue with the research or `q` to terminate it which will result in a summary like if you terminated it without using the pause feature.
